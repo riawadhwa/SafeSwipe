@@ -43,14 +43,14 @@ export default function Sidebar() {
 
   return (
     <aside className="w-72 min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 text-white flex flex-col">
-      
+
       {/* Logo */}
       <div className="p-6 flex items-center gap-3">
         <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center">
           <Shield size={20} />
         </div>
         <div>
-          <p className="font-bold text-lg">FraudGuard</p>
+          <p className="font-bold text-lg">SafeSwipe</p>
           <p className="text-xs text-slate-400">Admin Panel</p>
         </div>
       </div>

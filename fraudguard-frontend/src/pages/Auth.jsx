@@ -38,7 +38,7 @@ export default function Auth() {
             <Shield size={24} />
           </div>
           <h2 className="mt-3 text-lg font-semibold">
-            Fraud Detection System
+            SafeSwipe
           </h2>
           <p className="text-sm text-slate-500">Admin Portal</p>
         </div>
