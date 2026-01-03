@@ -9,8 +9,49 @@ export default function Signup() {
     password: "",
   })
 
+  const [otpInput, setOtpInput] = useState("")
+  const [otpCode, setOtpCode] = useState("")
+  const [otpSent, setOtpSent] = useState(false)
+  const [otpVerified, setOtpVerified] = useState(false)
+  const [otpStatus, setOtpStatus] = useState("")
+  const [otpError, setOtpError] = useState("")
+
+  const handleSendOtp = (e) => {
+    e.preventDefault()
+    if (!form.email) {
+      setOtpError("Enter an email first")
+      setOtpStatus("")
+      return
+    }
+    const code = Math.floor(100000 + Math.random() * 900000).toString()
+    setOtpCode(code)
+    setOtpSent(true)
+    setOtpVerified(false)
+    setOtpStatus(`OTP sent to ${form.email}`)
+    setOtpError("")
+    // Simulate sending email by logging; replace with real email service later
+    console.log("OTP for", form.email, "is", code)
+  }
+
+  const handleVerifyOtp = (e) => {
+    e.preventDefault()
+    if (otpInput === otpCode && otpInput.length === 6) {
+      setOtpVerified(true)
+      setOtpStatus("OTP verified")
+      setOtpError("")
+    } else {
+      setOtpVerified(false)
+      setOtpStatus("")
+      setOtpError("Incorrect OTP")
+    }
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
+    if (!otpVerified) {
+      setOtpError("Please verify the OTP sent to your email")
+      return
+    }
     navigate("/") // back to login
   }
 
@@ -21,7 +62,7 @@ export default function Signup() {
         className="bg-white rounded-xl shadow-md w-96 p-8"
       >
         <h2 className="text-xl font-semibold text-center mb-6">
-          Create Admin Account
+          SafeSwipe Admin Sign Up
         </h2>
 
         <input
@@ -49,6 +90,39 @@ export default function Signup() {
             setForm({ ...form, password: e.target.value })
           }
         />
+
+        <div className="mb-3 flex gap-2">
+          <button
+            className="flex-1 bg-slate-900 text-white py-2 rounded-lg disabled:opacity-50"
+            onClick={handleSendOtp}
+            disabled={otpSent && !otpVerified}
+          >
+            {otpSent && !otpVerified ? "OTP Sent" : "Send OTP"}
+          </button>
+          <button
+            className="flex-1 bg-green-600 text-white py-2 rounded-lg disabled:opacity-50"
+            onClick={handleVerifyOtp}
+            disabled={!otpSent}
+          >
+            Verify OTP
+          </button>
+        </div>
+
+        <input
+          type="text"
+          placeholder="Enter 6-digit OTP"
+          maxLength={6}
+          className="w-full border rounded-lg px-3 py-2 mb-2"
+          value={otpInput}
+          onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ""))}
+        />
+
+        {otpStatus && (
+          <p className="text-sm text-green-600 mb-2">{otpStatus}</p>
+        )}
+        {otpError && (
+          <p className="text-sm text-red-600 mb-2">{otpError}</p>
+        )}
 
         <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg">
           Sign Up

@@ -18,7 +18,7 @@ export default function Login() {
         className="bg-white rounded-xl shadow-md w-96 p-8"
       >
         <h2 className="text-xl font-semibold text-center mb-6">
-          Fraud Detection System
+          SafeSwipe Login
         </h2>
 
         <input
