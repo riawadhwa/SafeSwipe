@@ -55,10 +55,7 @@ fraudTrain.csv/
 fraudTest.csv/
 *.csv
 
-# Trained models
-model/
-*.pkl
-*.joblib
+train.py
 
 # EDA outputs
 eda_viz/
