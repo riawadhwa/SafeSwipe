@@ -1,0 +1,1 @@
+["category", "amt", "city_pop", "trans_month", "trans_hour", "is_weekend", "is_night", "is_business_hours", "is_holiday_season", "is_tax_season", "hour_sin", "hour_cos", "month_sin", "month_cos", "age", "age_group", "gender_encoded", "city_pop_category", "is_distant_transaction"]
