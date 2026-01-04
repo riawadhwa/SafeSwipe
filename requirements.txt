@@ -1,0 +1,18 @@
+# Core
+numpy>=1.23
+pandas>=1.5
+
+# Machine Learning
+scikit-learn>=1.2
+imbalanced-learn>=0.11
+xgboost>=1.7
+
+# Model persistence
+joblib>=1.2
+
+# Backend / API
+flask>=2.2
+flask-cors>=4.0
+
+# Utilities
+python-dateutil>=2.8
