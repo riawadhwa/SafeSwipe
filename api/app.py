@@ -60,7 +60,7 @@ def predict():
 
 
     return jsonify({
-        "fraud": bool(prob > 1e-05),
+        "fraud": bool(prob < 1e-05),
         "confidence": float(prob)
     })
 
