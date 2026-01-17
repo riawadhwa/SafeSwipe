@@ -1,9 +1,9 @@
 import { useParams } from "react-router-dom"
 import { useState, useEffect } from "react"
 import { CreditCard, ShieldCheck, XCircle } from "lucide-react"
-import { doc, setDoc, increment, serverTimestamp, getDoc, updateDoc } from "firebase/firestore"
+import { doc, getDoc, setDoc, increment, serverTimestamp, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { createTransaction } from "@/services/transactions.service"
+import { predictFraud } from "@/services/fraud.service"
 
 export default function PaymentPage() {
   const { linkCode } = useParams()
@@ -14,7 +14,9 @@ export default function PaymentPage() {
     name: "",
     email: "",
     phone: "",
-    cnic: "",
+    gender: "",
+    dob: "",
+    category: "grocery_pos",
     billingAddress: "",
     shippingAddress: "",
     cardNumber: "",
@@ -36,6 +38,7 @@ export default function PaymentPage() {
         }
 
         const linkData = linkSnap.data()
+        console.log("Payment link data fetched:", linkData)
 
         // Check if link is already used
         if (linkData.used) {
@@ -51,6 +54,13 @@ export default function PaymentPage() {
           setLinkError("This payment link has expired")
           return
         }
+
+        // Set the amount from the payment link
+        setFormData(prev => ({
+          ...prev,
+          amount: linkData.amount || 100
+        }))
+        console.log("Payment amount set from link:", linkData.amount)
 
         setLinkStatus("valid")
       } catch (error) {
@@ -84,6 +94,132 @@ export default function PaymentPage() {
     }))
   }
 
+  // Get user's geolocation
+  const getUserLocation = async () => {
+    return new Promise((resolve) => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            resolve({
+              lat: position.coords.latitude,
+              long: position.coords.longitude
+            })
+          },
+          () => {
+            // Fallback to billing address geocoding
+            resolve({ lat: 40.7128, long: -74.0060 })
+          }
+        )
+      } else {
+        resolve({ lat: 40.7128, long: -74.0060 })
+      }
+    })
+  }
+
+  // Comprehensive city population database
+  const cityPopulationDB = {
+    // US Cities
+    "new york": 8000000,
+    "los angeles": 3900000,
+    "chicago": 2700000,
+    "houston": 2300000,
+    "phoenix": 1600000,
+    "philadelphia": 1600000,
+    "san antonio": 1400000,
+    "san diego": 1300000,
+    "dallas": 1300000,
+    "san jose": 1000000,
+    "austin": 950000,
+    "seattle": 750000,
+    "denver": 700000,
+    "boston": 690000,
+    "miami": 440000,
+    "atlanta": 500000,
+    "detroit": 670000,
+    "minneapolis": 425000,
+    "portland": 645000,
+    "las vegas": 650000,
+    // Add more cities as needed
+  }
+
+  // Postal code to city mapping
+  const postalCodeDB = {
+    "10001": { city: "new york", population: 8000000 },
+    "10002": { city: "new york", population: 8000000 },
+    "90001": { city: "los angeles", population: 3900000 },
+    "90210": { city: "los angeles", population: 3900000 },
+    "60601": { city: "chicago", population: 2700000 },
+    "77001": { city: "houston", population: 2300000 },
+    "85001": { city: "phoenix", population: 1600000 },
+    "19101": { city: "philadelphia", population: 1600000 },
+    "92101": { city: "san diego", population: 1300000 },
+    "75201": { city: "dallas", population: 1300000 },
+    "95101": { city: "san jose", population: 1000000 },
+    "78701": { city: "austin", population: 950000 },
+    "98101": { city: "seattle", population: 750000 },
+    "80202": { city: "denver", population: 700000 },
+    "02101": { city: "boston", population: 690000 },
+  }
+
+  // Extract city and postal code from address
+  const parseAddress = (address) => {
+    // Try to extract postal code (5 digits in US format)
+    const postalMatch = address.match(/\b\d{5}\b/)
+    const postalCode = postalMatch ? postalMatch[0] : null
+
+    // Extract city (usually before the state abbreviation or postal code)
+    const parts = address.split(",").map((p) => p.trim())
+    let city = parts[0] // Default to first part
+
+    if (parts.length >= 2) {
+      city = parts[parts.length - 2] // Usually second to last part before state/zip
+    }
+
+    return { postalCode, city }
+  }
+
+  // Enhanced city population lookup with multiple fallback strategies
+  const getCityPopulation = (address) => {
+    console.log("Looking up population for address:", address)
+
+    // Strategy 1: Try postal code lookup
+    const { postalCode, city } = parseAddress(address)
+
+    if (postalCode && postalCodeDB[postalCode]) {
+      console.log("Found city from postal code:", postalCode)
+      return postalCodeDB[postalCode].population
+    }
+
+    // Strategy 2: Try exact city name match
+    const normalizedCity = city
+      .toLowerCase()
+      .replace(/[^\w\s]/g, "") // Remove special characters
+      .trim()
+
+    if (cityPopulationDB[normalizedCity]) {
+      console.log("Found city from exact match:", normalizedCity)
+      return cityPopulationDB[normalizedCity]
+    }
+
+    // Strategy 3: Substring matching for partial city names
+    for (const [dbCity, population] of Object.entries(cityPopulationDB)) {
+      if (
+        normalizedCity.includes(dbCity) ||
+        address.toLowerCase().includes(dbCity)
+      ) {
+        console.log("Found city from substring match:", dbCity)
+        return population
+      }
+    }
+
+    // Strategy 4: Use geolocation coordinates for distance-based lookup
+    // (Would require reverse geocoding API call - commented for now)
+    // TODO: Implement Google Maps reverse geocoding for production
+
+    console.log("No city match found, returning default population: 150000")
+    return 150000 // Default fallback
+  }
+
   const handlePay = async (e) => {
     e.preventDefault()
 
@@ -108,25 +244,79 @@ export default function PaymentPage() {
     }
 
     try {
-      // TEMP mock fraud result
-      const outcomes = ["completed", "review", "declined"]
-      const txStatus = outcomes[Math.floor(Math.random() * outcomes.length)]
+      // Get user location
+      const userLocation = await getUserLocation()
 
-      // Save transaction
+      // Get city population from billing address
+      const cityPop = getCityPopulation(formData.billingAddress)
+
+      // Build ML payload with ACTUAL values
+      const mlPayload = {
+        amt: formData.amount,
+        category: formData.category,
+        gender: formData.gender === "M" ? "M" : "F",
+        dob: formData.dob,
+        city_pop: cityPop,
+        lat: userLocation.lat,
+        long: userLocation.long,
+        merch_lat: 40.7580, // Merchant location
+        merch_long: -73.9855, // Merchant location
+        trans_date_trans_time: new Date().toISOString()
+      }
+      console.log("ML Payload being sent with AMOUNT:", mlPayload.amt, mlPayload)
+
+      // Call ML fraud detection API
+      let mlResult
+      try {
+        mlResult = await predictFraud(mlPayload)
+        console.log("ML API Response:", mlResult)
+      } catch (error) {
+        console.error("ML API failed, defaulting to completed:", error)
+        mlResult = { fraud: false, confidence: 0 }
+      }
+
+      // Decision logic: ML + Rules
+      let txStatus = "completed"
+      let mlConfidence = mlResult.confidence || 0
+
+      // Only decline if high confidence fraud (> 0.8)
+      if (mlResult.fraud && mlConfidence > 0.8) {
+        console.log("HIGH confidence fraud detected - DECLINING")
+        txStatus = "declined"
+      } else {
+        // All other cases (low fraud or no fraud) → Completed
+        txStatus = "completed"
+      }
+
+      // Rule-based overrides
+      if (formData.billingAddress !== formData.shippingAddress) {
+        // Different addresses - increase scrutiny
+        if (txStatus === "completed") {
+          txStatus = "review"
+        }
+      }
+
+      // Save transaction with ML confidence
       const txnRef = doc(db, "transactions", crypto.randomUUID())
-      await setDoc(txnRef, {
+      const transactionData = {
+        paymentLinkId: linkCode,
         customerEmail: formData.email,
         customerName: formData.name,
         phone: formData.phone,
-        cnic: formData.cnic,
         billingAddress: formData.billingAddress,
         shippingAddress: formData.shippingAddress,
         cardNumber: formData.cardNumber,
         amount: formData.amount,
         status: txStatus,
-        paymentLinkId: linkCode,
+        mlConfidence: mlConfidence,
+        mlFraud: mlResult.fraud,
         createdAt: serverTimestamp()
-      })
+      }
+      console.log("Transaction data being saved to Firestore:", transactionData)
+      await setDoc(txnRef, transactionData)
+      console.log("Transaction saved with ID:", txnRef.id)
+      console.log("Transaction data being saved:", transactionData)
+      await setDoc(txnRef, transactionData)
 
       // Create/update customer
       const custRef = doc(db, "customers", formData.email)
@@ -142,6 +332,7 @@ export default function PaymentPage() {
         },
         { merge: true }
       )
+      console.log("Customer record updated:", formData.email)
 
       // Mark payment link as used
       const linkRef = doc(db, "payment_links", linkCode)
@@ -150,6 +341,7 @@ export default function PaymentPage() {
         usedAt: serverTimestamp(),
         status: "used"
       })
+      console.log("Payment link marked as used:", linkCode)
 
       setStatus(txStatus)
     } catch (error) {
@@ -228,6 +420,12 @@ export default function PaymentPage() {
           <p className="text-slate-500 mt-1">Enter your information to complete the payment</p>
         </div>
 
+        {/* Amount Summary Box */}
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-600 font-semibold">Payment Amount</p>
+          <p className="text-2xl font-bold text-blue-900 mt-1">USD {formData.amount}</p>
+        </div>
+
         <form onSubmit={handlePay} className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
@@ -267,15 +465,49 @@ export default function PaymentPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700">CNIC</label>
-              <input
-                type="text"
-                name="cnic"
-                placeholder="CNIC"
-                value={formData.cnic}
+              <label className="text-sm font-semibold text-slate-700">Gender</label>
+              <select
+                name="gender"
+                value={formData.gender}
                 onChange={handleInputChange}
                 className="w-full border border-slate-200 rounded-lg px-4 py-3 bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-none"
+                required
+              >
+                <option value="">Select Gender</option>
+                <option value="M">Male</option>
+                <option value="F">Female</option>
+                <option value="O">Other</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700">Date of Birth</label>
+              <input
+                type="date"
+                name="dob"
+                value={formData.dob}
+                onChange={handleInputChange}
+                className="w-full border border-slate-200 rounded-lg px-4 py-3 bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-none"
+                required
               />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700">Transaction Category</label>
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleInputChange}
+                className="w-full border border-slate-200 rounded-lg px-4 py-3 bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-none"
+                required
+              >
+                <option value="grocery_pos">Grocery / POS</option>
+                <option value="electronics">Electronics</option>
+                <option value="travel">Travel</option>
+                <option value="shopping_online">Online Shopping</option>
+                <option value="fuel_gas_transport">Fuel / Gas Transport</option>
+                <option value="restaurants">Restaurants</option>
+                <option value="digital_services">Digital Services</option>
+                <option value="financial">Financial</option>
+              </select>
             </div>
           </div>
 

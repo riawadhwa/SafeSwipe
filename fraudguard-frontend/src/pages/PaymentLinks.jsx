@@ -9,6 +9,11 @@ export default function PaymentLinks() {
 
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [linkFormData, setLinkFormData] = useState({
+        amount: 100,
+        currency: "USD",
+        country: "India"
+    })
 
     useEffect(() => {
         fetchLinks()
@@ -28,15 +33,17 @@ export default function PaymentLinks() {
         setLoading(true)
         try {
             await createPaymentLink({
-                amount: 100,
-                currency: "USD",
-                country: "India",
+                amount: parseFloat(linkFormData.amount),
+                currency: linkFormData.currency,
+                country: linkFormData.country,
                 expiresAt: Date.now() + 86400000,
                 used: false,
                 createdAt: Date.now()
             })
+            console.log("Payment link created with amount:", linkFormData.amount)
             alert("Payment link created successfully!")
             setOpen(false)
+            setLinkFormData({ amount: 100, currency: "USD", country: "India" })
             await fetchLinks()
         } catch (error) {
             console.error(error)
@@ -108,8 +115,8 @@ export default function PaymentLinks() {
                                     <td className="px-6 py-4">{link.country}</td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-full text-xs ${isUsed ? "bg-slate-200 text-slate-700" :
-                                                isExpired ? "bg-red-100 text-red-700" :
-                                                    "bg-green-100 text-green-700"
+                                            isExpired ? "bg-red-100 text-red-700" :
+                                                "bg-green-100 text-green-700"
                                             }`}>
                                             {isUsed ? "Used" : isExpired ? "Expired" : "Active"}
                                         </span>
@@ -158,18 +165,31 @@ export default function PaymentLinks() {
                                 <label className="text-sm text-slate-600">Amount</label>
                                 <input
                                     type="number"
-                                    defaultValue="100.00"
+                                    value={linkFormData.amount}
+                                    onChange={(e) => setLinkFormData(prev => ({ ...prev, amount: e.target.value }))}
                                     className="w-full mt-1 border rounded-lg px-3 py-2"
                                 />
                             </div>
 
                             <div>
                                 <label className="text-sm text-slate-600">Currency</label>
-                                <select className="w-full mt-1 border rounded-lg px-3 py-2">
+                                <select
+                                    value={linkFormData.currency}
+                                    onChange={(e) => setLinkFormData(prev => ({ ...prev, currency: e.target.value }))}
+                                    className="w-full mt-1 border rounded-lg px-3 py-2"
+                                >
                                     <option>USD</option>
                                     <option>INR</option>
                                 </select>
                             </div>
+                        </div>
+
+                        {/* Amount Preview */}
+                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-sm text-blue-600">Payment Amount</p>
+                            <p className="text-xl font-bold text-blue-900 mt-1">
+                                {linkFormData.currency} {parseFloat(linkFormData.amount).toFixed(2)}
+                            </p>
                         </div>
 
                         {/* Country */}
@@ -177,8 +197,11 @@ export default function PaymentLinks() {
                             <label className="text-sm text-slate-600">
                                 Target Country
                             </label>
-                            <select className="w-full mt-1 border rounded-lg px-3 py-2">
-                                <option>Select country</option>
+                            <select
+                                value={linkFormData.country}
+                                onChange={(e) => setLinkFormData(prev => ({ ...prev, country: e.target.value }))}
+                                className="w-full mt-1 border rounded-lg px-3 py-2"
+                            >
                                 <option>India</option>
                                 <option>United States</option>
                             </select>
