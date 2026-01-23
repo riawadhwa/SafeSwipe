@@ -9,7 +9,7 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend requests
 
 # ---------------- Load artifacts ----------------
-model = joblib.load("model/xgboost.pkl")
+model = joblib.load("model/stacking_rf_xgb.pkl")
 scaler = joblib.load("model/scaler.pkl")
 
 with open("model/features.json") as f:
@@ -62,7 +62,7 @@ def predict():
 
 
     return jsonify({
-        "fraud": bool(prob < 1e-05),
+        "fraud": bool(prob > 0.4),
         "confidence": float(prob)
     })
 
