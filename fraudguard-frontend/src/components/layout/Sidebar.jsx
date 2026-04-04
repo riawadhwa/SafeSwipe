@@ -7,6 +7,7 @@ import {
   Users,
   AlertTriangle,
   Link as LinkIcon,
+  ReceiptText,
   LogOut,
   Shield
 } from "lucide-react"
@@ -37,6 +38,7 @@ export default function Sidebar() {
   const menu = [
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { name: "Customers", path: "/customers", icon: Users },
+    { name: "Transactions", path: "/transactions", icon: ReceiptText },
     { name: "Fraudulent", path: "/fraudulent", icon: AlertTriangle },
     { name: "Payment Links", path: "/payment-links", icon: LinkIcon },
   ]

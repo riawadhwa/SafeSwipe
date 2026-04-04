@@ -4,11 +4,21 @@ import PageHeader from "@/components/layout/PageHeader"
 import { Plus, Copy, X } from "lucide-react"
 import { createPaymentLink, getPaymentLinks } from "@/services/paymentLinks.service"
 
+const RULE_OPTIONS = [
+    { key: "multiple_credit_cards_check", label: "Multiple credit cards check" },
+    { key: "flagged_ip_email_mac_check", label: "Flagged IP/Email/MAC check" },
+    { key: "unusual_email_domain_check", label: "Unusual email domain check" },
+    { key: "transaction_frequency_check", label: "Transaction frequency check" },
+    { key: "billing_shipping_mismatch_check", label: "Billing ≠ Shipping address" },
+    { key: "vpn_detection", label: "VPN detection" },
+]
+
 export default function PaymentLinks() {
     const [links, setLinks] = useState([])
 
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [exemptRules, setExemptRules] = useState([])
     const [linkFormData, setLinkFormData] = useState({
         amount: 100,
         currency: "USD",
@@ -36,6 +46,7 @@ export default function PaymentLinks() {
                 amount: parseFloat(linkFormData.amount),
                 currency: linkFormData.currency,
                 country: linkFormData.country,
+                exemptRules,
                 expiresAt: Date.now() + 86400000,
                 used: false,
                 createdAt: Date.now()
@@ -44,6 +55,7 @@ export default function PaymentLinks() {
             alert("Payment link created successfully!")
             setOpen(false)
             setLinkFormData({ amount: 100, currency: "USD", country: "India" })
+            setExemptRules([])
             await fetchLinks()
         } catch (error) {
             console.error(error)
@@ -213,20 +225,23 @@ export default function PaymentLinks() {
                                 Exempt Rules (Optional)
                             </p>
 
-                            {[
-                                "Multiple credit cards check",
-                                "Flagged IP/Email/MAC check",
-                                "Unusual email domain check",
-                                "Transaction frequency check",
-                                "Billing ≠ Shipping address",
-                                "VPN detection",
-                            ].map((rule) => (
+                            {RULE_OPTIONS.map((rule) => (
                                 <div
-                                    key={rule}
+                                    key={rule.key}
                                     className="flex justify-between items-center py-2 border-b text-sm"
                                 >
-                                    <span>{rule}</span>
-                                    <input type="checkbox" className="scale-110" />
+                                    <span>{rule.label}</span>
+                                    <input
+                                        type="checkbox"
+                                        className="scale-110"
+                                        checked={exemptRules.includes(rule.key)}
+                                        onChange={(e) => {
+                                            setExemptRules((prev) => {
+                                                if (e.target.checked) return [...prev, rule.key]
+                                                return prev.filter((r) => r !== rule.key)
+                                            })
+                                        }}
+                                    />
                                 </div>
                             ))}
                         </div>

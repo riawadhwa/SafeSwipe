@@ -3,13 +3,15 @@ import { useState, useEffect } from "react"
 import { CreditCard, ShieldCheck, XCircle } from "lucide-react"
 import { doc, getDoc, setDoc, increment, serverTimestamp, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { predictFraud } from "@/services/fraud.service"
+import { assessTransaction } from "@/services/fraud.service"
 
 export default function PaymentPage() {
   const { linkCode } = useParams()
   const [status, setStatus] = useState("form")
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [linkStatus, setLinkStatus] = useState("loading")
   const [linkError, setLinkError] = useState("")
+  const [linkExemptRules, setLinkExemptRules] = useState([])
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -60,6 +62,7 @@ export default function PaymentPage() {
           ...prev,
           amount: linkData.amount || 100
         }))
+        setLinkExemptRules(Array.isArray(linkData.exemptRules) ? linkData.exemptRules : [])
         console.log("Payment amount set from link:", linkData.amount)
 
         setLinkStatus("valid")
@@ -116,112 +119,9 @@ export default function PaymentPage() {
     })
   }
 
-  // Comprehensive city population database
-  const cityPopulationDB = {
-    // US Cities
-    "new york": 8000000,
-    "los angeles": 3900000,
-    "chicago": 2700000,
-    "houston": 2300000,
-    "phoenix": 1600000,
-    "philadelphia": 1600000,
-    "san antonio": 1400000,
-    "san diego": 1300000,
-    "dallas": 1300000,
-    "san jose": 1000000,
-    "austin": 950000,
-    "seattle": 750000,
-    "denver": 700000,
-    "boston": 690000,
-    "miami": 440000,
-    "atlanta": 500000,
-    "detroit": 670000,
-    "minneapolis": 425000,
-    "portland": 645000,
-    "las vegas": 650000,
-    // Add more cities as needed
-  }
-
-  // Postal code to city mapping
-  const postalCodeDB = {
-    "10001": { city: "new york", population: 8000000 },
-    "10002": { city: "new york", population: 8000000 },
-    "90001": { city: "los angeles", population: 3900000 },
-    "90210": { city: "los angeles", population: 3900000 },
-    "60601": { city: "chicago", population: 2700000 },
-    "77001": { city: "houston", population: 2300000 },
-    "85001": { city: "phoenix", population: 1600000 },
-    "19101": { city: "philadelphia", population: 1600000 },
-    "92101": { city: "san diego", population: 1300000 },
-    "75201": { city: "dallas", population: 1300000 },
-    "95101": { city: "san jose", population: 1000000 },
-    "78701": { city: "austin", population: 950000 },
-    "98101": { city: "seattle", population: 750000 },
-    "80202": { city: "denver", population: 700000 },
-    "02101": { city: "boston", population: 690000 },
-  }
-
-  // Extract city and postal code from address
-  const parseAddress = (address) => {
-    // Try to extract postal code (5 digits in US format)
-    const postalMatch = address.match(/\b\d{5}\b/)
-    const postalCode = postalMatch ? postalMatch[0] : null
-
-    // Extract city (usually before the state abbreviation or postal code)
-    const parts = address.split(",").map((p) => p.trim())
-    let city = parts[0] // Default to first part
-
-    if (parts.length >= 2) {
-      city = parts[parts.length - 2] // Usually second to last part before state/zip
-    }
-
-    return { postalCode, city }
-  }
-
-  // Enhanced city population lookup with multiple fallback strategies
-  const getCityPopulation = (address) => {
-    console.log("Looking up population for address:", address)
-
-    // Strategy 1: Try postal code lookup
-    const { postalCode, city } = parseAddress(address)
-
-    if (postalCode && postalCodeDB[postalCode]) {
-      console.log("Found city from postal code:", postalCode)
-      return postalCodeDB[postalCode].population
-    }
-
-    // Strategy 2: Try exact city name match
-    const normalizedCity = city
-      .toLowerCase()
-      .replace(/[^\w\s]/g, "") // Remove special characters
-      .trim()
-
-    if (cityPopulationDB[normalizedCity]) {
-      console.log("Found city from exact match:", normalizedCity)
-      return cityPopulationDB[normalizedCity]
-    }
-
-    // Strategy 3: Substring matching for partial city names
-    for (const [dbCity, population] of Object.entries(cityPopulationDB)) {
-      if (
-        normalizedCity.includes(dbCity) ||
-        address.toLowerCase().includes(dbCity)
-      ) {
-        console.log("Found city from substring match:", dbCity)
-        return population
-      }
-    }
-
-    // Strategy 4: Use geolocation coordinates for distance-based lookup
-    // (Would require reverse geocoding API call - commented for now)
-    // TODO: Implement Google Maps reverse geocoding for production
-
-    console.log("No city match found, returning default population: 150000")
-    return 150000 // Default fallback
-  }
-
   const handlePay = async (e) => {
     e.preventDefault()
+    if (isSubmitting) return
 
     // Validate card expiry
     const [month, year] = formData.cardExpiry.split('/')
@@ -244,57 +144,57 @@ export default function PaymentPage() {
     }
 
     try {
+      setIsSubmitting(true)
       // Get user location
       const userLocation = await getUserLocation()
 
-      // Get city population from billing address
-      const cityPop = getCityPopulation(formData.billingAddress)
+      const deviceId = btoa(
+        [navigator.userAgent, navigator.language, Intl.DateTimeFormat().resolvedOptions().timeZone]
+          .join("|")
+      ).slice(0, 64)
 
-      // Build ML payload with ACTUAL values
-      const mlPayload = {
-        amt: formData.amount,
+      const assessmentPayload = {
+        amount: formData.amount,
         category: formData.category,
         gender: formData.gender === "M" ? "M" : "F",
         dob: formData.dob,
-        city_pop: cityPop,
+        billingAddress: formData.billingAddress,
+        shippingAddress: formData.shippingAddress,
+        cardNumber: formData.cardNumber,
+        email: formData.email,
+        name: formData.name,
+        deviceId,
+        exemptRules: linkExemptRules,
         lat: userLocation.lat,
         long: userLocation.long,
         merch_lat: 40.7580, // Merchant location
         merch_long: -73.9855, // Merchant location
         trans_date_trans_time: new Date().toISOString()
       }
-      console.log("ML Payload being sent with AMOUNT:", mlPayload.amt, mlPayload)
+      console.log("Assessment payload being sent:", assessmentPayload)
 
-      // Call ML fraud detection API
-      let mlResult
+      // Backend: ML + behavioral/network checks + backend storage
+      let assessment
       try {
-        mlResult = await predictFraud(mlPayload)
-        console.log("ML API Response:", mlResult)
+        assessment = await assessTransaction(assessmentPayload)
+        console.log("Assessment API Response:", assessment)
       } catch (error) {
-        console.error("ML API failed, defaulting to completed:", error)
-        mlResult = { fraud: false, confidence: 0 }
-      }
-
-      // Decision logic: ML + Rules
-      let txStatus = "completed"
-      let mlConfidence = mlResult.confidence || 0
-
-      // Only decline if high confidence fraud (> 0.8)
-      if (mlResult.fraud && mlConfidence > 0.8) {
-        console.log("HIGH confidence fraud detected - DECLINING")
-        txStatus = "declined"
-      } else {
-        // All other cases (low fraud or no fraud) → Completed
-        txStatus = "completed"
-      }
-
-      // Rule-based overrides
-      if (formData.billingAddress !== formData.shippingAddress) {
-        // Different addresses - increase scrutiny
-        if (txStatus === "completed") {
-          txStatus = "review"
+        console.error("Assessment API failed, defaulting to review:", error)
+        assessment = {
+          status: "review",
+          fraud: false,
+          confidence: 0,
+          riskScore: 0,
+          reasons: ["assessment_api_unavailable"]
         }
       }
+
+      const txStatus = assessment.status || "review"
+      const mlConfidence = assessment.confidence || 0
+      const digitsOnlyCard = (formData.cardNumber || "").replace(/\D/g, "")
+      const maskedCard = digitsOnlyCard
+        ? `**** **** **** ${digitsOnlyCard.slice(-4)}`
+        : ""
 
       // Save transaction with ML confidence
       const txnRef = doc(db, "transactions", crypto.randomUUID())
@@ -305,11 +205,14 @@ export default function PaymentPage() {
         phone: formData.phone,
         billingAddress: formData.billingAddress,
         shippingAddress: formData.shippingAddress,
-        cardNumber: formData.cardNumber,
+        cardNumber: maskedCard,
         amount: formData.amount,
         status: txStatus,
         mlConfidence: mlConfidence,
-        mlFraud: mlResult.fraud,
+        mlFraud: assessment.fraud,
+        riskScore: assessment.riskScore || 0,
+        riskReasons: assessment.reasons || [],
+        network: assessment.network || {},
         createdAt: serverTimestamp()
       }
       console.log("Transaction data being saved to Firestore:", transactionData)
@@ -347,6 +250,8 @@ export default function PaymentPage() {
     } catch (error) {
       console.error(error)
       alert("Failed to process payment")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -588,9 +493,10 @@ export default function PaymentPage() {
           <div className="pt-4">
             <button
               type="submit"
+              disabled={isSubmitting}
               className="w-full py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-indigo-600 to-blue-600 shadow-sm hover:opacity-90"
             >
-              Pay Now
+              {isSubmitting ? "Processing..." : "Pay Now"}
             </button>
           </div>
         </form>
