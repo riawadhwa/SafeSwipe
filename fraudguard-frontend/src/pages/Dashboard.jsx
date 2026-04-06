@@ -282,8 +282,8 @@ export default function Dashboard() {
               {statusParts.map((part) => (
                 <div key={part.label} className="flex items-center justify-between gap-3 rounded-md bg-slate-50 px-3 py-2">
                   <div className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full" style={{ backgroundColor: part.color }} />
-                  <span className="text-slate-600">{part.label}</span>
+                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: part.color }} />
+                    <span className="text-slate-600">{part.label}</span>
                   </div>
                   <span className="font-medium">{part.count}</span>
                   <span className="text-xs text-slate-400">
@@ -326,59 +326,59 @@ export default function Dashboard() {
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <h3 className="px-6 pt-6 font-semibold">Recent Transactions</h3>
         <div className="overflow-x-auto">
-        <table className="mt-4 w-full min-w-[760px] text-sm">
-          <thead className="border-b text-slate-500">
-            <tr>
-              <th className="px-6 py-3 text-left">Txn ID</th>
-              <th className="px-6 py-3 text-left">Link ID</th>
-              <th className="px-6 py-3 text-left">Amount</th>
-              <th className="px-6 py-3 text-left">Status</th>
-              <th className="px-6 py-3 text-left">Time</th>
-            </tr>
-          </thead>
-          <tbody>
-            {allTransactions.length === 0 ? (
+          <table className="mt-4 w-full min-w-[760px] text-sm">
+            <thead className="border-b text-slate-500">
               <tr>
-                <td colSpan="5" className="px-6 py-6 text-center text-slate-500">
-                  No transactions yet
-                </td>
+                <th className="px-6 py-3 text-left">Txn ID</th>
+                <th className="px-6 py-3 text-left">Link ID</th>
+                <th className="px-6 py-3 text-left">Amount</th>
+                <th className="px-6 py-3 text-left">Status</th>
+                <th className="px-6 py-3 text-left">Time</th>
               </tr>
-            ) : (
-              allTransactions.slice(0, 10).map(tx => (
-                <tr key={tx.id} className="border-b transition-colors hover:bg-slate-50/80">
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={() => openTransaction(tx)}
-                      className="text-blue-700 hover:underline"
-                    >
-                      {String(tx.id).slice(0, 10)}...
-                    </button>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={() => openTransaction(tx)}
-                      className="text-blue-700 hover:underline"
-                    >
-                      {tx.paymentLinkId || "—"}
-                    </button>
-                  </td>
-                  <td className="px-6 py-4">{tx.amount ?? "—"}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${tx.status === "completed" ? "bg-green-100 text-green-700" :
-                      tx.status === "review" ? "bg-yellow-100 text-yellow-700" :
-                        "bg-red-100 text-red-700"
-                      }`}>
-                      {tx.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    {tx.createdAt?.toDate?.().toLocaleString() || new Date(tx.createdAt).toLocaleString()}
+            </thead>
+            <tbody>
+              {allTransactions.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="px-6 py-6 text-center text-slate-500">
+                    No transactions yet
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                allTransactions.slice(0, 10).map(tx => (
+                  <tr key={tx.id} className="border-b transition-colors hover:bg-slate-50/80">
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => openTransaction(tx)}
+                        className="text-blue-700 hover:underline"
+                      >
+                        {String(tx.id).slice(0, 10)}...
+                      </button>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => openTransaction(tx)}
+                        className="text-blue-700 hover:underline"
+                      >
+                        {tx.paymentLinkId || "—"}
+                      </button>
+                    </td>
+                    <td className="px-6 py-4">{tx.amount ?? "—"}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${tx.status === "completed" ? "bg-green-100 text-green-700" :
+                        tx.status === "review" ? "bg-yellow-100 text-yellow-700" :
+                          "bg-red-100 text-red-700"
+                        }`}>
+                        {tx.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {tx.createdAt?.toDate?.().toLocaleString() || new Date(tx.createdAt).toLocaleString()}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 

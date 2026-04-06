@@ -127,11 +127,10 @@ export default function Transactions() {
                         <button
                             key={item.id}
                             onClick={() => setQuickFilter(item.id)}
-                            className={`rounded-full px-3 py-1.5 text-sm transition ${
-                                quickFilter === item.id
+                            className={`rounded-full px-3 py-1.5 text-sm transition ${quickFilter === item.id
                                     ? "bg-slate-900 text-white"
                                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                            }`}
+                                }`}
                         >
                             {item.label}
                         </button>
@@ -148,59 +147,58 @@ export default function Transactions() {
 
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-sm">
-                    <thead className="sticky top-0 z-10 border-b bg-slate-50">
-                        <tr>
-                            <th className="p-3 text-left">Txn ID</th>
-                            <th className="p-3 text-left">Link</th>
-                            <th className="p-3 text-left">Amount</th>
-                            <th className="p-3 text-left">Status</th>
-                            <th className="p-3 text-left">Time</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredTransactions.map(tx => (
-                            <tr key={tx.id} className="border-b transition-colors hover:bg-slate-50/80">
-                                <td className="p-3">
-                                    <button
-                                        className="text-blue-700 hover:underline"
-                                        onClick={() => openTransaction(tx)}
-                                    >
-                                        {String(tx.id).slice(0, 10)}...
-                                    </button>
-                                </td>
-                                <td className="p-3">
-                                    <button
-                                        className="text-blue-700 hover:underline"
-                                        onClick={() => openTransaction(tx)}
-                                    >
-                                        {tx.paymentLinkId || "—"}
-                                    </button>
-                                </td>
-                                <td className="p-3 font-medium text-slate-800">{formatCurrency(getAmount(tx))}</td>
-                                <td className="p-3 capitalize">
-                                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${
-                                        tx.status === "completed"
-                                            ? "bg-emerald-100 text-emerald-700"
-                                            : tx.status === "review"
-                                                ? "bg-amber-100 text-amber-700"
-                                                : "bg-red-100 text-red-700"
-                                    }`}>
-                                        {tx.status}
-                                    </span>
-                                </td>
-                                <td className="p-3 text-slate-600">{getReadableDate(tx)}</td>
-                            </tr>
-                        ))}
-                        {filteredTransactions.length === 0 && (
+                    <table className="w-full min-w-[760px] text-sm">
+                        <thead className="sticky top-0 z-10 border-b bg-slate-50">
                             <tr>
-                                <td colSpan="5" className="p-6 text-center text-slate-500">
-                                    No transactions found for your current filters.
-                                </td>
+                                <th className="p-3 text-left">Txn ID</th>
+                                <th className="p-3 text-left">Link</th>
+                                <th className="p-3 text-left">Amount</th>
+                                <th className="p-3 text-left">Status</th>
+                                <th className="p-3 text-left">Time</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {filteredTransactions.map(tx => (
+                                <tr key={tx.id} className="border-b transition-colors hover:bg-slate-50/80">
+                                    <td className="p-3">
+                                        <button
+                                            className="text-blue-700 hover:underline"
+                                            onClick={() => openTransaction(tx)}
+                                        >
+                                            {String(tx.id).slice(0, 10)}...
+                                        </button>
+                                    </td>
+                                    <td className="p-3">
+                                        <button
+                                            className="text-blue-700 hover:underline"
+                                            onClick={() => openTransaction(tx)}
+                                        >
+                                            {tx.paymentLinkId || "—"}
+                                        </button>
+                                    </td>
+                                    <td className="p-3 font-medium text-slate-800">{formatCurrency(getAmount(tx))}</td>
+                                    <td className="p-3 capitalize">
+                                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${tx.status === "completed"
+                                                ? "bg-emerald-100 text-emerald-700"
+                                                : tx.status === "review"
+                                                    ? "bg-amber-100 text-amber-700"
+                                                    : "bg-red-100 text-red-700"
+                                            }`}>
+                                            {tx.status}
+                                        </span>
+                                    </td>
+                                    <td className="p-3 text-slate-600">{getReadableDate(tx)}</td>
+                                </tr>
+                            ))}
+                            {filteredTransactions.length === 0 && (
+                                <tr>
+                                    <td colSpan="5" className="p-6 text-center text-slate-500">
+                                        No transactions found for your current filters.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
