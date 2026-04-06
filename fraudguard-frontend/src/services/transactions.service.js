@@ -1,7 +1,6 @@
 import { db } from "@/lib/firebase"
 import {
     collection,
-    addDoc,
     doc,
     setDoc,
     serverTimestamp,
@@ -9,6 +8,9 @@ import {
     query,
     orderBy,
     increment,
+    deleteDoc,
+    getDoc,
+    runTransaction,
 } from "firebase/firestore"
 
 export const createTransaction = async (data) => {
@@ -51,4 +53,36 @@ export const listenToTransactions = (callback) => {
         }))
         callback(data)
     })
+}
+
+export const deleteTransactionById = async (transactionId) => {
+    const txnRef = doc(db, "transactions", transactionId)
+    const txnSnap = await getDoc(txnRef)
+
+    if (!txnSnap.exists()) {
+        throw new Error("Transaction not found")
+    }
+
+    const txData = txnSnap.data()
+    const customerEmail = txData?.customerEmail
+
+    await deleteDoc(txnRef)
+
+    if (customerEmail) {
+        const customerRef = doc(db, "customers", customerEmail)
+        await runTransaction(db, async (transaction) => {
+            const customerSnap = await transaction.get(customerRef)
+            if (!customerSnap.exists()) return
+
+            const current = Number(customerSnap.data()?.totalTransactions || 0)
+            transaction.set(
+                customerRef,
+                {
+                    totalTransactions: Math.max(current - 1, 0),
+                    lastTransactionAt: serverTimestamp(),
+                },
+                { merge: true }
+            )
+        })
+    }
 }

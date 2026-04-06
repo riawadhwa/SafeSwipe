@@ -4,6 +4,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 
 const formatDateTime = (value) => {
   if (!value) return "—"
@@ -12,7 +13,13 @@ const formatDateTime = (value) => {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString()
 }
 
-export default function TransactionDetailsDialog({ open, onOpenChange, transaction }) {
+export default function TransactionDetailsDialog({
+  open,
+  onOpenChange,
+  transaction,
+  onDeleteTransaction,
+  deletePending = false,
+}) {
   if (!transaction) return null
 
   const riskReasons = Array.isArray(transaction.riskReasons)
@@ -74,6 +81,17 @@ export default function TransactionDetailsDialog({ open, onOpenChange, transacti
             </div>
           </div>
         )}
+
+        <div className="mt-4 flex justify-end border-t pt-4">
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => onDeleteTransaction?.(transaction)}
+            disabled={deletePending}
+          >
+            {deletePending ? "Deleting..." : "Delete Transaction"}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   )
