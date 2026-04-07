@@ -6,6 +6,8 @@ import Customers from "./pages/Customers"
 import Fraudulent from "./pages/Fraudulent"
 import PaymentLinks from "./pages/PaymentLinks"
 import PaymentPage from "./pages/PaymentPage"
+import Transactions from "./pages/Transactions"
+import Simulation from "./pages/Simulation"
 
 export default function App() {
   return (
@@ -16,6 +18,8 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/fraudulent" element={<Fraudulent />} />
+          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/simulation" element={<Simulation />} />
           <Route path="/payment-links" element={<PaymentLinks />} />
           <Route path="/pay/:linkCode" element={<PaymentPage />} />
         </Routes>

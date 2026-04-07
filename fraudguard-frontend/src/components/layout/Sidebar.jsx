@@ -7,6 +7,8 @@ import {
   Users,
   AlertTriangle,
   Link as LinkIcon,
+  ReceiptText,
+  FlaskConical,
   LogOut,
   Shield
 } from "lucide-react"
@@ -37,12 +39,14 @@ export default function Sidebar() {
   const menu = [
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { name: "Customers", path: "/customers", icon: Users },
+    { name: "Transactions", path: "/transactions", icon: ReceiptText },
+    { name: "Simulation", path: "/simulation", icon: FlaskConical },
     { name: "Fraudulent", path: "/fraudulent", icon: AlertTriangle },
     { name: "Payment Links", path: "/payment-links", icon: LinkIcon },
   ]
 
   return (
-    <aside className="w-72 min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 text-white flex flex-col">
+    <aside className="h-full w-72 shrink-0 overflow-hidden bg-gradient-to-b from-slate-900 to-slate-800 text-white flex flex-col">
 
       {/* Logo */}
       <div className="p-6 flex items-center gap-3">
@@ -56,7 +60,7 @@ export default function Sidebar() {
       </div>
 
       {/* Menu */}
-      <nav className="px-4 space-y-1 flex-1">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-4 pb-4">
         {menu.map((item) => {
           const Icon = item.icon
           const active = location.pathname === item.path

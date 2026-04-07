@@ -60,4 +60,6 @@ train.py
 # EDA outputs
 eda_viz/
 
-model/stacking_rf_xgb.pkl
+.venv
+.venv_new
+api/*.db
