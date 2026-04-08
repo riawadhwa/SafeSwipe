@@ -37,29 +37,27 @@ RULE_KEYS = {
     RULE_VPN,
 }
 
-model_path_candidates = [
-    MODEL_DIR / "stacking_rf_xgb.pkl",
-    MODEL_DIR / "xgboost.pkl",
-    MODEL_DIR / "random_forest.pkl",
-    MODEL_DIR / "logistic_regression.pkl",
-]
-
-model_path = next((p for p in model_path_candidates if p.exists()), None)
-if model_path is None:
-    raise FileNotFoundError(
-        "No model .pkl file found in model/. Expected one of: "
-        + ", ".join(p.name for p in model_path_candidates)
-    )
-
 with warnings.catch_warnings():
     warnings.filterwarnings(
         "ignore",
         message=r".*If you are loading a serialized model.*",
         category=UserWarning,
     )
-    model = joblib.load(model_path)
 
-print(f"Loaded model artifact: {model_path.name}")
+    models = {
+        "lr": joblib.load(MODEL_DIR / "logistic_regression.pkl"),
+        "rf": joblib.load(MODEL_DIR / "random_forest.pkl"),
+        "xgb": joblib.load(MODEL_DIR / "xgboost.pkl"),
+        "stack": joblib.load(MODEL_DIR / "stacking_rf_xgb.pkl")
+    }
+
+print("Loaded models: lr, rf, xgb, stack")
+thresholds = {
+    "lr": 0.5,
+    "rf": 0.48,
+    "xgb": 8e-06,
+    "stack": 0.35
+}
 scaler = joblib.load(MODEL_DIR / "scaler.pkl")
 
 with open(MODEL_DIR / "features.json") as f:
@@ -220,7 +218,9 @@ def lookup_city_population(city_name):
     return population
 
 
-def ml_confidence_from_payload(payload):
+def ml_confidence_from_payload(payload, model_name="stack"):
+    model = models[model_name]
+
     df = pd.DataFrame([{
         "amt": payload["amt"],
         "category": payload["category"],
@@ -237,8 +237,8 @@ def ml_confidence_from_payload(payload):
     X = build_model_features(df)
     X = X[MODEL_FEATURES]
     X_scaled = scaler.transform(X)
-    return float(model.predict_proba(X_scaled)[0][1])
 
+    return float(model.predict_proba(X_scaled)[0][1])
 
 def get_card_streak(card_hash):
     # Consecutive streak in latest transactions (global sequence)
@@ -464,12 +464,59 @@ def predict():
     if missing:
         return jsonify({"error": f"Missing fields: {missing}"}), 400
 
-    prob = ml_confidence_from_payload(payload)
+    prob = ml_confidence_from_payload(payload,"stack")
+    threshold = thresholds["stack"]
+
+    # stacking gives decision
+    if prob >= 0.7:
+        decision = "declined"
+    elif prob >= 0.4:
+        decision = "flagged"
+    elif prob >= threshold:
+        decision = "under_review"
+    else:
+        decision = "approved"
 
     return jsonify({
-        "fraud": bool(prob > 0.4),
-        "confidence": float(prob)
+        "model": "stack",
+        "fraud": bool(prob > threshold),
+        "confidence": float(prob),
+        "decision": decision
     })
+
+def simple_model_response(model_name, payload):
+    prob = ml_confidence_from_payload(payload, model_name)
+    threshold = thresholds[model_name]
+
+    return {
+        "model": model_name,
+        "fraud": bool(prob > threshold),
+        "confidence": float(prob)
+    }
+
+
+@app.route("/predict/lr", methods=["POST"])
+def predict_lr():
+    payload = request.json
+    return jsonify(simple_model_response("lr", payload))
+
+
+@app.route("/predict/rf", methods=["POST"])
+def predict_rf():
+    payload = request.json
+    return jsonify(simple_model_response("rf", payload))
+
+
+@app.route("/predict/xgb", methods=["POST"])
+def predict_xgb():
+    payload = request.json
+    return jsonify(simple_model_response("xgb", payload))
+
+
+@app.route("/predict/stack", methods=["POST"])
+def predict_stack():
+    payload = request.json
+    return predict()   # reuse default stacking logic
 
 
 @app.route("/assess-transaction", methods=["POST"])
@@ -511,7 +558,7 @@ def assess_transaction():
         "trans_date_trans_time": payload.get("trans_date_trans_time") or datetime.now(timezone.utc).isoformat(),
     }
 
-    ml_confidence = ml_confidence_from_payload(ml_payload)
+    ml_confidence = ml_confidence_from_payload(ml_payload, "stack")
 
     reasons = []
     heuristic_risk = 0.0
